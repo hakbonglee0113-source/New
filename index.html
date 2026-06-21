@@ -16,6 +16,18 @@
   .spin { animation: spin 1s linear infinite; }
   @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); } 100% { box-shadow: 0 0 0 10px rgba(220,38,38,0); } }
   .pulse { animation: pulse-ring 1.2s infinite; }
+  .print-only { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    .print-only, .print-only * { visibility: visible; }
+    .print-only { display: block; position: absolute; left: 0; top: 0; width: 100%; }
+    .print-page { page-break-after: always; padding: 10mm; font-size: 10.5px; }
+    .print-page:last-child { page-break-after: auto; }
+    .pf-table { width: 100%; border-collapse: collapse; }
+    .pf-table td, .pf-table th { border: 1px solid #333; padding: 3px 5px; vertical-align: top; font-size: 10px; }
+    .pf-label { background: #f2f2f2; font-weight: 600; white-space: nowrap; width: 1%; }
+    .pf-title { text-align: center; font-weight: 700; font-size: 13px; margin: 4px 0 8px; }
+  }
 </style>
 </head>
 <body>
@@ -498,6 +510,165 @@ function RecordList({ records, onOpen, onNew, onDelete }) {
   );
 }
 
+// ================= 인쇄용 양식 (PDF 출력용, 화면엔 안 보이고 인쇄/PDF저장 시에만 표시) =================
+const CK = (v) => (v ? "■" : "□");
+function chipLine(options, value) {
+  return options.map((o) => `${CK(value === o)}${o}`).join("  ");
+}
+function ThreatPrintBlock({ label, t }) {
+  return (
+    <table className="pf-table" style={{ marginTop: 3 }}>
+      <tbody>
+        <tr>
+          <td className="pf-label">{label}</td>
+          <td colSpan={3}>
+            {chipLine(THREAT_CATEGORY, t.category)}{t.detail ? `  ( ${t.detail} )` : ""}
+          </td>
+        </tr>
+        <tr>
+          <td className="pf-label">발생시기</td><td>{chipLine(THREAT_TIMING, t.timing)}</td>
+          <td className="pf-label">강도</td><td>{chipLine(THREAT_INTENSITY, t.intensity)}</td>
+        </tr>
+        <tr>
+          <td className="pf-label">영향</td><td>{chipLine(THREAT_IMPACT, t.impact)}</td>
+          <td className="pf-label">범위</td><td>{chipLine(THREAT_RANGE, t.range)}</td>
+        </tr>
+        <tr>
+          <td className="pf-label">미래예측</td><td colSpan={3}>{chipLine(THREAT_FORECAST, t.forecast)}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function PrintView({ record }) {
+  const r = record;
+  return (
+    <div className="print-only">
+      {/* ---- 1페이지 ---- */}
+      <div className="print-page">
+        <div className="pf-title">멸종위기 야생생물 관찰종 곤충 ( {r.speciesNameKR} ) -1 현지조사표</div>
+        <table className="pf-table">
+          <tbody>
+            <tr>
+              <td className="pf-label">조사종명(국명)</td><td>{r.speciesNameKR}</td>
+              <td className="pf-label">조사표번호</td><td>{r.surveyNo}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">조사일자</td><td>{r.surveyDate}</td>
+              <td className="pf-label">시간</td><td>{r.timeStart} ~ {r.timeEnd}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">날씨</td><td>{chipLine(["맑음", "흐림", "비"], r.weather)}</td>
+              <td className="pf-label">기온</td><td>{r.tempC} ℃</td>
+            </tr>
+            <tr>
+              <td className="pf-label">책임조사자</td><td>{r.surveyorLead} / {r.surveyorLeadOrg}</td>
+              <td className="pf-label">보조조사자</td><td>{r.surveyorAssist} / {r.surveyorAssistOrg}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">개체군명</td><td>{r.populationName}</td>
+              <td className="pf-label">개체군 코드</td><td>{r.populationCode}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">조사지역명</td><td>{r.regionName}</td>
+              <td className="pf-label">조사지역 코드</td><td>{r.regionCode}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">조사지</td>
+              <td colSpan={3}>
+                {chipLine(["필수", "신규", "미확인"], r.siteType)}
+                {r.siteType === "미확인" ? `  ( ${chipLine(["가능", "불가능"], r.siteUnconfirmedOk)} 이유: ${r.siteUnconfirmedReason || ""} )` : ""}
+              </td>
+            </tr>
+            <tr>
+              <td className="pf-label">행정구역</td><td colSpan={3}>{r.admDistrict}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">위치설명</td><td colSpan={3}>{r.locationDesc}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">기존 좌표</td><td colSpan={3}>N {r.latExisting}　E {r.lngExisting}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">실측 좌표</td><td colSpan={3}>N {r.latMeasured}　E {r.lngMeasured}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">좌표값 취득원</td>
+              <td>{chipLine(COORD_SOURCES, r.coordSource)}{r.coordSource === "GPS" && r.coordSourceModel ? ` (모델명: ${r.coordSourceModel})` : ""}</td>
+              <td className="pf-label">고도</td><td>{r.altitude} m</td>
+            </tr>
+            <tr>
+              <td className="pf-label">개체수</td><td colSpan={3}>{chipLine(COUNT_BUCKETS, r.countBucket)}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">조사방법</td>
+              <td colSpan={3}>{chipLine(SURVEY_METHODS, r.surveyMethod)}{r.surveyMethodDetail ? `  ( ${r.surveyMethodDetail} )` : ""}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">단계별 개체수</td>
+              <td colSpan={3}>
+                {GROWTH_STAGES.map((s) => `${s} ${r.growthStageCounts[s] || "-"}`).join("　")}
+              </td>
+            </tr>
+            <tr>
+              <td className="pf-label">생식가능비율</td><td>{r.reproRatio} %</td>
+              <td className="pf-label">개체평균크기</td><td>{r.avgSizeCm} cm</td>
+            </tr>
+            <tr>
+              <td className="pf-label">서식지유형</td>
+              <td colSpan={3}>대분류: {r.habitatMajor || "-"}　중분류: {r.habitatMinor || "-"}</td>
+            </tr>
+            <tr>
+              <td className="pf-label">서식지/식생 비고</td>
+              <td colSpan={3}>{r.habitatNote}{r.vegetationLayers ? `　[식생층위] ${r.vegetationLayers}` : ""}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="pf-title" style={{ fontSize: 11, marginTop: 8 }}>위협요인</div>
+        <ThreatPrintBlock label="1순위 요인" t={r.threats.primary} />
+        <ThreatPrintBlock label="2순위 요인" t={r.threats.secondary} />
+        <ThreatPrintBlock label="3순위 요인" t={r.threats.tertiary} />
+      </div>
+
+      {/* ---- 2페이지 ---- */}
+      <div className="print-page">
+        <div className="pf-title">멸종위기 야생생물 관찰종 곤충 ( {r.speciesNameKR} ) -2 현지조사표</div>
+        <table className="pf-table">
+          <tbody>
+            <tr><td className="pf-label">조사표번호</td><td>{r.surveyNo}</td></tr>
+            <tr>
+              <td className="pf-label">공동/동서출현종</td>
+              <td>
+                {r.coOccurring.filter((c) => c.name).map((c) => `${c.name} ${c.count || ""}`).join("　/　") || "-"}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="pf-title" style={{ fontSize: 11, marginTop: 10 }}>조사지 약도</div>
+        {r.latMeasured && r.lngMeasured ? (
+          <div style={{ position: "relative", width: "100%", maxWidth: 300, aspectRatio: "1/1", border: "1px solid #333" }}>
+            <img src={osmTileUrl(parseFloat(r.latMeasured), parseFloat(r.lngMeasured))} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div style={{
+              position: "absolute", width: 10, height: 10, marginLeft: -5, marginTop: -10, borderRadius: "50%",
+              background: "red", border: "2px solid white",
+              left: `${(osmMarkerPx(parseFloat(r.latMeasured), parseFloat(r.lngMeasured)).left / 256) * 100}%`,
+              top: `${(osmMarkerPx(parseFloat(r.latMeasured), parseFloat(r.lngMeasured)).top / 256) * 100}%`,
+            }} />
+          </div>
+        ) : (
+          <div style={{ border: "1px solid #333", padding: 20, textAlign: "center", color: "#999" }}>좌표 없음</div>
+        )}
+
+        <div className="pf-title" style={{ fontSize: 11, marginTop: 10 }}>코멘트 및 기타</div>
+        <table className="pf-table"><tbody><tr><td style={{ minHeight: 60 }}>{r.comment}</td></tr></tbody></table>
+      </div>
+    </div>
+  );
+}
+
 // ================= 야장 편집 화면 =================
 function RecordEditor({ record, onChange, onBack }) {
   const [openSection, setOpenSection] = useState("basic");
@@ -866,6 +1037,14 @@ function RecordEditor({ record, onChange, onBack }) {
             )}
           </section>
         ))}
+
+        <button onClick={() => window.print()}
+          className="w-full flex items-center justify-center gap-2 bg-stone-800 text-white text-[13.5px] font-medium py-3 rounded-lg mb-2">
+          📄 현지조사표 출력 / PDF로 저장
+        </button>
+        <p className="text-[10.5px] text-stone-400 text-center mb-4">인쇄 화면에서 "PDF로 저장"을 선택하면 양식 그대로 PDF 파일로 받을 수 있습니다.</p>
+
+        <PrintView record={record} />
       </main>
     </div>
   );
