@@ -515,6 +515,34 @@ function RecordEditor({ record, onChange, onBack }) {
     lines.push(`파일명: ${file.name}`);
     lines.push(`타입: ${file.type || "(알 수 없음)"}`);
     lines.push(`크기: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+
+    // 0순위: 실제 업로드 시 쓰이는 것과 100% 동일한 함수를 그대로 호출
+    lines.push("");
+    lines.push("=== ★ 실제 앱이 쓰는 함수(getGPSFromFile) 결과 ★ ===");
+    try {
+      const actual = await getGPSFromFile(file);
+      lines.push(JSON.stringify(actual));
+    } catch (e) {
+      lines.push(`에러: ${e.message}`);
+    }
+
+    // 자체 파서만 단독으로도 확인 (exifr 폴백 없이)
+    lines.push("");
+    lines.push("=== 자체 파서 단독 (findTiffOffsetInBuffer + readGPSFromTiff) ===");
+    try {
+      const buf2 = await file.arrayBuffer();
+      lines.push(`arrayBuffer 읽은 크기: ${buf2.byteLength} (파일 크기: ${file.size}, 일치: ${buf2.byteLength === file.size})`);
+      const view2 = new DataView(buf2);
+      const t2 = findTiffOffsetInBuffer(view2);
+      lines.push(`tiffOffset: ${t2}`);
+      if (t2 !== null) {
+        const r2 = readGPSFromTiff(view2, t2);
+        lines.push(`결과: ${JSON.stringify(r2)}`);
+      }
+    } catch (e) {
+      lines.push(`자체 파서 에러: ${e.message}`);
+    }
+
     try {
       const buf = await file.slice(0, 16).arrayBuffer();
       const bytes = new Uint8Array(buf);
