@@ -216,23 +216,29 @@ function compressImage(dataUrl, maxDim = 1280, quality = 0.6) {
 //      실제 27MB 갤럭시 파노라마 원본 파일의 바이트를 파이썬으로 직접 검증한 뒤 이식한 로직)
 // 2차: exifr 라이브러리 (1차가 실패한 경우의 폴백, HEIC 등 다른 포맷 대응)
 
-function readGPSFromTiff(view, tiffOffset) {
+function readGPSFromTiff(view, tiffOffset, trace) {
   const little = view.getUint16(tiffOffset) === 0x4949;
   const g16 = (o) => view.getUint16(o, little);
   const g32 = (o) => view.getUint32(o, little);
   const ifd0Offset = tiffOffset + g32(tiffOffset + 4);
   const numEntries = g16(ifd0Offset);
+  if (trace) trace.push(`little=${little} ifd0Offset=${ifd0Offset} numEntries=${numEntries}`);
   let gpsIfdOffset = null;
   for (let i = 0; i < numEntries; i++) {
     const eo = ifd0Offset + 2 + i * 12;
-    if (g16(eo) === 0x8825) { gpsIfdOffset = tiffOffset + g32(eo + 8); break; }
+    const tagHere = g16(eo);
+    if (trace) trace.push(`  IFD0 entry[${i}] offset=${eo} tag=0x${tagHere.toString(16)}`);
+    if (tagHere === 0x8825) { gpsIfdOffset = tiffOffset + g32(eo + 8); break; }
   }
+  if (trace) trace.push(`gpsIfdOffset=${gpsIfdOffset}`);
   if (gpsIfdOffset === null) return null;
   const gpsEntries = g16(gpsIfdOffset);
+  if (trace) trace.push(`gpsEntries=${gpsEntries}`);
   const tags = {};
   for (let i = 0; i < gpsEntries; i++) {
     const eo = gpsIfdOffset + 2 + i * 12;
     const tag = g16(eo), type = g16(eo + 2), count = g32(eo + 4);
+    if (trace) trace.push(`  GPS entry[${i}] eo=${eo} tag=${tag} type=${type} count=${count}`);
     if (type === 2) {
       tags[tag] = String.fromCharCode(view.getUint8(eo + 8));
     } else if (type === 5) {
@@ -244,8 +250,12 @@ function readGPSFromTiff(view, tiffOffset) {
         vals.push(den === 0 ? 0 : num / den);
       }
       tags[tag] = count === 1 ? vals[0] : vals;
+      if (trace) trace.push(`    dataOff=${dataOff} vals=${JSON.stringify(vals)}`);
+    } else {
+      if (trace) trace.push(`    (처리 안 하는 type=${type}, 건너뜀)`);
     }
   }
+  if (trace) trace.push(`tags=${JSON.stringify(tags)}`);
   if (!tags[2] || !tags[4]) return null;
   const toDec = (dms, ref) => {
     const d = Array.isArray(dms) ? dms[0] + dms[1] / 60 + dms[2] / 3600 : dms;
@@ -536,8 +546,11 @@ function RecordEditor({ record, onChange, onBack }) {
       const t2 = findTiffOffsetInBuffer(view2);
       lines.push(`tiffOffset: ${t2}`);
       if (t2 !== null) {
-        const r2 = readGPSFromTiff(view2, t2);
-        lines.push(`결과: ${JSON.stringify(r2)}`);
+        const trace = [];
+        const r2 = readGPSFromTiff(view2, t2, trace);
+        lines.push("--- 단계별 추적 ---");
+        lines.push(...trace);
+        lines.push(`최종 결과: ${JSON.stringify(r2)}`);
       }
     } catch (e) {
       lines.push(`자체 파서 에러: ${e.message}`);
