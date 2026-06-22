@@ -483,10 +483,18 @@ async function loadRecordsFromSupabase() {
 }
 
 async function saveRecordToSupabase(record) {
-  const { data: { user } } = await supabase.auth.getUser();
+  if (!supabaseClient) {
+    alert("Supabase 연결이 없습니다.");
+    return false;
+  }
+
+  const result = await supabaseClient.auth.getUser();
+  const user = result.data.user;
+
+  console.log("USER", user);
 
   if (!user) {
-    alert("로그인이 필요합니다. 아직 로그인 화면을 붙이지 않았기 때문에 저장은 되지 않습니다.");
+    alert("로그인이 필요합니다.");
     return false;
   }
 
@@ -505,11 +513,12 @@ async function saveRecordToSupabase(record) {
     });
 
   if (error) {
-    console.error(error);
+    console.error("SAVE ERROR", error);
     alert("저장 실패: " + error.message);
     return false;
   }
 
+  console.log("SAVE OK");
   return true;
 }
 
