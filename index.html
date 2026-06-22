@@ -616,6 +616,48 @@ function AuthBox({ onLogin }) {
       </div>
     </div>
   );
+}
+async function uploadPhotoToSupabase(recordId, file) {
+  if (!supabaseClient) {
+    alert("Supabase 연결이 없습니다.");
+    return null;
+  }
+
+  const { data, error: userError } = await supabaseClient.auth.getUser();
+
+  if (userError || !data.user) {
+    alert("사진 업로드를 위해 로그인이 필요합니다.");
+    return null;
+  }
+
+  const user = data.user;
+  const ext = file.name.split(".").pop() || "jpg";
+  const photoId = uid();
+  const filePath = `${user.id}/${recordId}/${photoId}.${ext}`;
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from("field-photos")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false
+    });
+
+  if (uploadError) {
+    console.error("PHOTO UPLOAD ERROR", uploadError);
+    alert("사진 업로드 실패: " + uploadError.message);
+    return null;
+  }
+
+  const { data: publicData } = supabaseClient.storage
+    .from("field-photos")
+    .getPublicUrl(filePath);
+
+  return {
+    id: photoId,
+    name: file.name,
+    filePath,
+    publicUrl: publicData.publicUrl
+  };
 }  
 function PhotoTile({ photo, onRemove }) {
   return (
@@ -947,10 +989,40 @@ function RecordEditor({ record, onChange, onBack }) {
   const removeCoOccurring = (idx) => onChange({ ...record, coOccurring: record.coOccurring.filter((_, i) => i !== idx) });
 
   const processOnePhoto = useCallback(async (file) => {
-    const rawDataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = (e) => res(e.target.result); r.readAsDataURL(file); });
-    const compressed = await compressImage(rawDataUrl);
-    const newPhoto = { id: uid(), dataUrl: compressed, name: file.name };
-    onChange((prev) => ({ ...prev, photos: [...prev.photos, newPhoto] }));
+    const rawDataUrl = await new Promise((res) => {
+  const r = new FileReader();
+  r.onload = (e) => res(e.target.result);
+  r.readAsDataURL(file);
+});
+
+const compressed = await compressImage(rawDataUrl);
+
+const blob = await fetch(compressed).then((res) => res.blob());
+
+const compressedFile = new File(
+  [blob],
+  file.name.replace(/\.[^.]+$/, ".jpg"),
+  { type: "image/jpeg" }
+);
+
+const uploadedPhoto = await uploadPhotoToSupabase(record.id, compressedFile);
+
+if (!uploadedPhoto) {
+  return;
+}
+
+const newPhoto = {
+  id: uploadedPhoto.id,
+  name: uploadedPhoto.name,
+  filePath: uploadedPhoto.filePath,
+  publicUrl: uploadedPhoto.publicUrl,
+  dataUrl: uploadedPhoto.publicUrl
+};
+
+onChange((prev) => ({
+  ...prev,
+  photos: [...prev.photos, newPhoto]
+}));
 
     const gps = await getGPSFromFile(file);
     if (gps && gps.readIssue) {
