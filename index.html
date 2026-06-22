@@ -40,10 +40,9 @@ const STORAGE_KEY = "fieldSurveyRecords_v1";
 const SUPABASE_URL = "https://vyrluvguxtchlnohoizn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cmx1dmd1eHRjaGxub2hvaXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMDYxMjgsImV4cCI6MjA5NzY4MjEyOH0.ISICTUeOEZU_1rAG1Y7uDho2ZluGeo_AH-vYFICRnEg";
 
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+const supabase = window.supabase?.createClient
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 // ---------- 아이콘 ----------
 const Icon = ({ d, size = 16, className = "", strokeWidth = 2 }) => (
@@ -467,6 +466,8 @@ async function signOut() {
 
 // ---------- Supabase 야장 저장/불러오기/삭제 ----------
 async function loadRecordsFromSupabase() {
+  if (!supabase) return await loadRecords();
+
   const { data, error } = await supabase
     .from("field_records")
     .select("*")
