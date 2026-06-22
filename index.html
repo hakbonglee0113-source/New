@@ -40,7 +40,7 @@ const STORAGE_KEY = "fieldSurveyRecords_v1";
 const SUPABASE_URL = "https://vyrluvguxtchlnohoizn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cmx1dmd1eHRjaGxub2hvaXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMDYxMjgsImV4cCI6MjA5NzY4MjEyOH0.ISICTUeOEZU_1rAG1Y7uDho2ZluGeo_AH-vYFICRnEg";
 
-const supabase = window.supabase?.createClient
+const supabaseClient = window.supabase?.createClient
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
@@ -433,7 +433,7 @@ async function deleteRecordFromDB(id) {
 }
 
 async function signUp(email, password) {
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password
   });
@@ -447,7 +447,7 @@ async function signUp(email, password) {
 }
 
 async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
@@ -461,14 +461,14 @@ async function signIn(email, password) {
 }
 
 async function signOut() {
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
 }
 
 // ---------- Supabase 야장 저장/불러오기/삭제 ----------
 async function loadRecordsFromSupabase() {
-  if (!supabase) return await loadRecords();
+  if (!supabaseClient) return await loadRecords();
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("field_records")
     .select("*")
     .order("created_at", { ascending: false });
@@ -490,7 +490,7 @@ async function saveRecordToSupabase(record) {
     return false;
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from("field_records")
     .upsert({
       id: record.id,
@@ -514,7 +514,7 @@ async function saveRecordToSupabase(record) {
 }
 
 async function deleteRecordFromSupabase(id) {
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from("field_records")
     .delete()
     .eq("id", id);
