@@ -708,7 +708,7 @@ function ThreatEditor({ label, value, onChange }) {
 }
 
 // ================= 야장 목록 화면 =================
-function RecordList({ records, onOpen, onNew, onDelete, isAdmin }) {
+function RecordList({ records, onOpen, onNew, onDelete, isAdmin, onLogout }) {
   const [query, setQuery] = useState("");
   const filtered = records.filter((r) =>
     (r.speciesNameKR + r.regionName + r.surveyDate).toLowerCase().includes(query.toLowerCase())
@@ -717,9 +717,27 @@ function RecordList({ records, onOpen, onNew, onDelete, isAdmin }) {
   return (
     <div className="min-h-screen bg-stone-50 pb-10">
       <header className="sticky top-0 z-20 bg-stone-900 text-stone-50 px-4 py-3">
-        <h1 className="text-[15px] font-semibold tracking-tight">멸종위기종 현지조사표</h1>
-        <p className="text-[11px] text-stone-400">곤충 · 야장 목록 ({records.length}건)</p>
-      </header>
+  <div className="flex justify-between items-start">
+    <div>
+      <h1 className="text-[15px] font-semibold tracking-tight">
+        멸종위기종 현지조사표
+      </h1>
+
+      <p className="text-[11px] text-stone-400">
+        {isAdmin
+          ? `관리자 · 전체 자료 (${records.length}건)`
+          : `곤충 · 야장 목록 (${records.length}건)`}
+      </p>
+    </div>
+
+    <button
+      onClick={onLogout}
+      className="bg-red-600 hover:bg-red-700 text-white text-[11px] px-3 py-1 rounded-md"
+    >
+      로그아웃
+    </button>
+  </div>
+</header>
       <main className="max-w-md mx-auto px-4 pt-4">
         <div className="flex gap-2 mb-3">
           <div className="relative flex-1">
@@ -1427,7 +1445,21 @@ function App() {
   return (
     <>
       {saveWarning && <div className="bg-amber-100 text-amber-800 text-[11.5px] px-4 py-1.5 text-center">{saveWarning}</div>}
-      <RecordList records={records} onOpen={setOpenId} onNew={createNew} onDelete={deleteRecord} isAdmin={isAdmin}/>
+      <RecordList
+  records={records}
+  onOpen={setOpenId}
+  onNew={createNew}
+  onDelete={deleteRecord}
+  isAdmin={isAdmin}
+  onLogout={async () => {
+    await signOut();
+
+    setUser(null);
+    setIsAdmin(false);
+    setRecords([]);
+    setOpenId(null);
+  }}
+/><RecordList records={records} onOpen={setOpenId} onNew={createNew} onDelete={deleteRecord} isAdmin={isAdmin}/>
     </>
   );
 }
