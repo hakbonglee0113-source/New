@@ -488,10 +488,17 @@ async function saveRecordToSupabase(record) {
     return false;
   }
 
-  const result = await supabaseClient.auth.getUser();
-  const user = result.data.user;
+  const { data, error: userError } = await supabaseClient.auth.getUser();
 
-  console.log("USER", user);
+if (userError) {
+  console.error("USER ERROR", userError);
+  alert("로그인 정보를 확인하지 못했습니다: " + userError.message);
+  return false;
+}
+
+const user = data.user;
+
+console.log("USER", user);
 
   if (!user) {
     alert("로그인이 필요합니다.");
