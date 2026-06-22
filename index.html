@@ -1117,15 +1117,20 @@ function App() {
         if (r.id !== openId) return r;
         return typeof updater === "function" ? updater(r) : updater;
       });
-      const changed = next.find((r) => r.id === openId);
-      if (changed)
-  saveRecordToSupabase(changed).then((ok) =>
-    setSaveWarning(
-      ok ? "" : "저장 공간이 부족합니다. 사진을 일부 삭제하거나 야장을 정리해주세요."
-    )
-  );
 
-return next;
+      const changed = next.find((r) => r.id === openId);
+
+      if (changed) {
+        saveRecordToSupabase(changed).then((ok) =>
+          setSaveWarning(
+            ok ? "" : "저장 공간이 부족합니다. 사진을 일부 삭제하거나 야장을 정리해주세요."
+          )
+        );
+      }
+
+      return next;
+    });
+  };
 
   const createNew = () => {
     const rec = emptyRecord();
@@ -1135,7 +1140,7 @@ return next;
   };
   const deleteRecord = (id) => {
     setRecords((prev) => prev.filter((r) => r.id !== id));
-    deleteRecordFromDB(id);
+    deleteRecordFromSupabase(id);
   };
 
   if (!loaded) {
