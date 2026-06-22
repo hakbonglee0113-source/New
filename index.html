@@ -1160,18 +1160,18 @@ function App() {
   const [saveWarning, setSaveWarning] = useState("");
 
   useEffect(() => {
-    loadRecordsFromSupabase().then((r) => {
-      setRecords(r);
-      setLoaded(true);
-    });
-  }, []);
+  loadRecords().then((r) => {
+    setRecords(r);
+    setLoaded(true);
+  });
+}, []);
 
   const openRecord = records.find((r) => r.id === openId);
 
   const persistAndSet = async (nextRecords, changedRecord) => {
     setRecords(nextRecords);
     if (changedRecord) {
-      const ok = await saveRecordToSupabase(changedRecord);
+      const ok = await saveRecord(changedRecord);
       setSaveWarning(ok ? "" : "저장에 실패했습니다. Supabase 연결 또는 로그인 상태를 확인해주세요.");
     }
   };
@@ -1186,7 +1186,7 @@ function App() {
       const changed = next.find((r) => r.id === openId);
 
       if (changed) {
-        saveRecordToSupabase(changed).then((ok) =>
+        saveRecord(changed).then((ok) =>
           setSaveWarning(ok ? "" : "저장에 실패했습니다. Supabase 연결 또는 로그인 상태를 확인해주세요.")
         );
       }
@@ -1198,13 +1198,13 @@ function App() {
   const createNew = () => {
     const rec = emptyRecord();
     setRecords((prev) => [rec, ...prev]);
-    saveRecordToSupabase(rec);
+    saveRecord(rec);
     setOpenId(rec.id);
   };
 
   const deleteRecord = (id) => {
     setRecords((prev) => prev.filter((r) => r.id !== id));
-    deleteRecordFromSupabase(id);
+    deleteRecordFromDB(id);
   };
 
   if (!loaded) {
