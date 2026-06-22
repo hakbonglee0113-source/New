@@ -464,6 +464,68 @@ async function signIn(email, password) {
 async function signOut() {
   await supabase.auth.signOut();
 }
+
+// ---------- Supabase 야장 저장/불러오기/삭제 ----------
+async function loadRecordsFromSupabase() {
+  const { data, error } = await supabase
+    .from("field_records")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    alert("자료 불러오기 실패: " + error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => row.record_data);
+}
+
+async function saveRecordToSupabase(record) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("로그인이 필요합니다. 아직 로그인 화면을 붙이지 않았기 때문에 저장은 되지 않습니다.");
+    return false;
+  }
+
+  const { error } = await supabase
+    .from("field_records")
+    .upsert({
+      id: record.id,
+      user_id: user.id,
+      species_name_kr: record.speciesNameKR,
+      survey_date: record.surveyDate,
+      region_name: record.regionName,
+      lat_measured: record.latMeasured,
+      lng_measured: record.lngMeasured,
+      record_data: record,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error(error);
+    alert("저장 실패: " + error.message);
+    return false;
+  }
+
+  return true;
+}
+
+async function deleteRecordFromSupabase(id) {
+  const { error } = await supabase
+    .from("field_records")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(error);
+    alert("삭제 실패: " + error.message);
+    return false;
+  }
+
+  return true;
+}
   
 function PhotoTile({ photo, onRemove }) {
   return (
