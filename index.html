@@ -1098,7 +1098,10 @@ function App() {
   const [saveWarning, setSaveWarning] = useState("");
 
   useEffect(() => {
-    loadRecordsFromSupabase().then((r) => { setRecords(r); setLoaded(true); });
+    loadRecordsFromSupabase().then((r) => {
+      setRecords(r);
+      setLoaded(true);
+    });
   }, []);
 
   const openRecord = records.find((r) => r.id === openId);
@@ -1107,7 +1110,7 @@ function App() {
     setRecords(nextRecords);
     if (changedRecord) {
       const ok = await saveRecordToSupabase(changedRecord);
-      setSaveWarning(ok ? "" : "저장 공간이 부족합니다. 사진을 일부 삭제하거나 야장을 정리해주세요.");
+      setSaveWarning(ok ? "" : "저장에 실패했습니다. Supabase 연결 또는 로그인 상태를 확인해주세요.");
     }
   };
 
@@ -1122,9 +1125,7 @@ function App() {
 
       if (changed) {
         saveRecordToSupabase(changed).then((ok) =>
-          setSaveWarning(
-            ok ? "" : "저장 공간이 부족합니다. 사진을 일부 삭제하거나 야장을 정리해주세요."
-          )
+          setSaveWarning(ok ? "" : "저장에 실패했습니다. Supabase 연결 또는 로그인 상태를 확인해주세요.")
         );
       }
 
@@ -1138,6 +1139,7 @@ function App() {
     saveRecordToSupabase(rec);
     setOpenId(rec.id);
   };
+
   const deleteRecord = (id) => {
     setRecords((prev) => prev.filter((r) => r.id !== id));
     deleteRecordFromSupabase(id);
@@ -1155,6 +1157,7 @@ function App() {
       </>
     );
   }
+
   return (
     <>
       {saveWarning && <div className="bg-amber-100 text-amber-800 text-[11.5px] px-4 py-1.5 text-center">{saveWarning}</div>}
